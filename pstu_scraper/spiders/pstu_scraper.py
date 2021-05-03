@@ -6,10 +6,16 @@ from bs4 import BeautifulSoup
 import re
 from rutermextract import TermExtractor
 
+from nltk import WordPunctTokenizer
+from nltk.tokenize.treebank import TreebankWordDetokenizer
+from num2t4ru import num2text
+
 import json
 
 data = []
 term_extractor = TermExtractor()
+wpt = WordPunctTokenizer()
+twd = TreebankWordDetokenizer()
 
 class MySpider(CrawlSpider):
     name = 'texts'
@@ -40,11 +46,19 @@ class MySpider(CrawlSpider):
             tt = dom.find('div', 'content').text
         except:
             self.log(f"-----------Page skipped: \"{item['title']}\"-----------")
-            return            
+            return
 
-        temp_text = (re.sub(r'\(\d+\.\d+\.\d+\)', '', tt)).replace('\xa0', ' ').replace('\r', ' ') \
+        temp_text = tt.replace('\xa0', ' ').replace('\r', ' ') \
             .replace('\n', ' ').replace('\t', ' ')
-        text = (re.sub(r' {2,}', ' ', re.sub(r'(?<! )1(?=[^ ]|$)', '', temp_text)))
+        temp_text = (re.sub(r' {2,}', ' ', re.sub(r'(?<! )1(?=[^ ]|$)', '', temp_text)))
+
+        tokens = wpt.tokenize(temp_text)
+
+        for token, idx in zip(tokens, range(len(tokens))):
+            if token.isnumeric():
+                tokens[idx] = num2text(int(token))
+
+        text = twd.detokenize(tokens)
 
         item['text'] = text
         
